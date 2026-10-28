@@ -6,7 +6,7 @@ from sqlalchemy import BigInteger, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
-
+from sqlalchemy import Text, Integer
 
 class Document(Base):
     __tablename__ = "documents"
@@ -60,4 +60,28 @@ class Document(Base):
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
+    )
+    extracted_text: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    extraction_method: Mapped[str | None] = mapped_column(
+        String(30),
+        nullable=True,
+    )
+
+    page_count: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    extraction_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    extracted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
