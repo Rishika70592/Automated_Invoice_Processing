@@ -1,32 +1,26 @@
-
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.config import ENV_FILE
 from app.db.database import Base, DATABASE_URL
-from app.models.document import Document  # noqa: F401
+import app.models  # noqa: F401
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Use the same database URL as the application.
-# Escape percent signs for ConfigParser interpolation.
-config.set_main_option(
-    "sqlalchemy.url",
-    DATABASE_URL.replace("%", "%%"),
-)
-
-# Register all SQLAlchemy models for migration autogeneration.
 target_metadata = Base.metadata
 
 
-def run_migrations_offline() -> None:
-    """Run migrations without creating a database connection."""
-    url = config.get_main_option("sqlalchemy.url")
+def get_database_url():
+    return DATABASE_URL
+
+
+def run_migrations_offline():
+    url = get_database_url()
+
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -39,10 +33,15 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def run_migrations_online() -> None:
-    """Run migrations using a live database connection."""
+def run_migrations_online():
+    configuration = config.get_section(
+        config.config_ini_section
+    )
+
+    configuration["sqlalchemy.url"] = get_database_url()
+
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
@@ -56,8 +55,6 @@ def run_migrations_online() -> None:
 
         with context.begin_transaction():
             context.run_migrations()
-
-    connectable.dispose()
 
 
 if context.is_offline_mode():
