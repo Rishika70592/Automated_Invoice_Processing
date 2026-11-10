@@ -55,7 +55,12 @@ class ValidationResult(Base):
         default=list,
         nullable=False,
     )
-
+    info: Mapped[list[Any]] = mapped_column(
+        JSON,
+        default=list,
+        server_default="[]",
+        nullable=False,
+    )
     notes: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
@@ -76,3 +81,4 @@ class ValidationResult(Base):
         "Document",
         back_populates="validation_results",
     )
+    

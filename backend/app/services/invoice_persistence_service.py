@@ -1,7 +1,8 @@
+
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import (
@@ -10,6 +11,7 @@ from app.models import (
     Invoice,
     InvoiceLineItem,
     Supplier,
+    ValidationResult,
 )
 from app.schemas.invoice import InvoiceExtractionResult
 
@@ -24,6 +26,7 @@ def persist_invoice(
     db: Session,
     document_id: str,
     extraction_result: InvoiceExtractionResult,
+    validation: dict,
 ) -> Invoice:
 
     try:
@@ -31,7 +34,7 @@ def persist_invoice(
 
         if document is None:
             raise InvoicePersistenceError(
-                f"Document {document_id} does not exist."
+                "Document does not exist."
             )
 
         data = extraction_result.data
@@ -40,29 +43,32 @@ def persist_invoice(
         supplier = None
 
         if data.supplier_name:
+            supplier_name = data.supplier_name.strip()
+
             if data.supplier_tax_id:
                 supplier = db.scalar(
                     select(Supplier).where(
-                        Supplier.tax_id == data.supplier_tax_id
+                        Supplier.tax_id == data.supplier_tax_id.strip()
                     )
                 )
 
             if supplier is None:
                 supplier = db.scalar(
                     select(Supplier).where(
-                        Supplier.name == data.supplier_name
+                        func.lower(Supplier.name)
+                        == supplier_name.lower()
                     )
                 )
 
             if supplier is None:
                 supplier = Supplier(
-                    name=data.supplier_name,
+                    name=supplier_name,
                     tax_id=data.supplier_tax_id,
                 )
                 db.add(supplier)
                 db.flush()
 
-        # 2. Find an existing invoice for this document.
+        # 2. Find or create invoice.
         invoice = db.scalar(
             select(Invoice)
             .options(selectinload(Invoice.line_items))
@@ -70,16 +76,13 @@ def persist_invoice(
         )
 
         if invoice is None:
-            invoice = Invoice(
-                document_id=document_id,
-            )
+            invoice = Invoice(document_id=document_id)
             db.add(invoice)
             db.flush()
         else:
-            # Replace previous extracted line items.
             invoice.line_items.clear()
 
-        # 3. Save invoice-level information.
+        # 3. Save invoice information.
         invoice.supplier_id = supplier.id if supplier else None
         invoice.invoice_number = data.invoice_number
         invoice.purchase_order_number = data.purchase_order_number
@@ -94,26 +97,38 @@ def persist_invoice(
 
         invoice.extraction_method = extraction_result.extraction_method
         invoice.model_name = extraction_result.model_name
+        invoice.processing_status = validation["status"]
 
-        # 4. Save every line item.
+        # 4. Save line items.
         for item in data.line_items:
-            line_item = InvoiceLineItem(
-                description=item.description,
-                quantity=item.quantity,
-                unit_price=item.unit_price,
-                tax_rate=item.tax_rate,
-                tax_amount=item.tax_amount,
-                line_total=item.line_total,
+            invoice.line_items.append(
+                InvoiceLineItem(
+                    description=item.description,
+                    quantity=item.quantity,
+                    unit_price=item.unit_price,
+                    tax_rate=item.tax_rate,
+                    tax_amount=item.tax_amount,
+                    line_total=item.line_total,
+                )
             )
 
-            invoice.line_items.append(line_item)
+        # 5. Save validation result.
+        validation_result = ValidationResult(
+            document_id=document.id,
+            invoice_id=invoice.id,
+            status=validation["status"],
+            errors=validation["errors"],
+            warnings=validation["warnings"],
+            info=validation["info"],
+        )
 
-        # 5. Update document status.
-        document.status = "extracted"
+        db.add(validation_result)
+
+        # 6. Update document.
         document.extraction_method = extraction_result.extraction_method
         document.extracted_at = datetime.now(timezone.utc)
 
-        # 6. Record audit activity.
+        # 7. Audit log.
         db.add(
             AuditLog(
                 document_id=document.id,
@@ -126,32 +141,28 @@ def persist_invoice(
                     "supplier_name": data.supplier_name,
                     "line_item_count": len(data.line_items),
                     "model_name": extraction_result.model_name,
+                    "validation_status": validation["status"],
                 },
             )
         )
 
-        # 7. Commit transaction.
-        db.commit()
+        # Do not commit here.
+        # The workflow service owns the transaction.
 
-        db.refresh(invoice)
+        db.flush()
 
         logger.info(
-            "Invoice persisted successfully. Invoice ID: %s",
+            "Invoice persisted: %s",
             invoice.id,
         )
 
         return invoice
 
     except Exception as exc:
-        db.rollback()
-
         logger.exception(
             "Invoice persistence failed for document %s.",
             document_id,
         )
-
-        if isinstance(exc, InvoicePersistenceError):
-            raise
 
         raise InvoicePersistenceError(
             "Could not persist invoice data."

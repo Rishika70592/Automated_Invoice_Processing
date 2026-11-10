@@ -41,6 +41,7 @@ class Invoice(Base):
         ForeignKey("documents.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
+        unique=True
     )
 
     supplier_id: Mapped[str | None] = mapped_column(
@@ -101,6 +102,13 @@ class Invoice(Base):
         nullable=True,
     )
 
+    processing_status: Mapped[str] = mapped_column(
+       String(30),
+       nullable=False,
+       default="needs_review",
+       server_default="needs_review",
+       index=True,
+    )
     extraction_method: Mapped[str | None] = mapped_column(
         String(30),
         nullable=True,
@@ -145,3 +153,5 @@ class Invoice(Base):
         "ValidationResult",
         back_populates="invoice",
     )
+
+    
