@@ -16,7 +16,9 @@ from app.models.audit_log import AuditLog
 from app.models.processing_job import ProcessingJob
 from app.models.invoice_line_item import InvoiceLineItem
 from app.models.validation_result import ValidationResult
-
+from fastapi.testclient import TestClient
+from app.main import app
+from app.db.database import get_db
 
 load_dotenv()
 
@@ -53,3 +55,16 @@ def db_session(test_engine):
     finally:
         session.rollback()
         session.close()
+
+@pytest.fixture
+def client(db_session):
+
+    def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()

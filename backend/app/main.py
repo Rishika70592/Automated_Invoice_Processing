@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 
 from app.api.documents import router as documents_router
-
+from app.api.invoices import router as invoices_router
 app = FastAPI(
     title="Automated Invoice Processing System",
     description="API for invoice upload, extraction, validation, and management.",
@@ -11,7 +11,7 @@ app = FastAPI(
 
 app.include_router(documents_router)
 
-
+app.include_router(invoices_router)
 @app.get("/")
 def root():
     return {
