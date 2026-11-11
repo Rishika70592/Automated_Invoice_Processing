@@ -6,3 +6,4 @@ uploads/
 .pytest_cache/
 backend/.env
 backend/storage
+storage/invoices
