@@ -7,3 +7,5 @@ uploads/
 backend/.env
 backend/storage
 storage/invoices
+frontend/.env
+frontend/node_modules
