@@ -1,12 +1,100 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, LoaderCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  LoaderCircle,
+  Download,
+  CalendarDays,
+  Building2,
+  Receipt,
+} from "lucide-react";
+
 import {
   getInvoiceDetails,
   downloadInvoiceDocument,
 } from "../api/invoiceApi";
 
+// -----------------------------------------
+// Helper: Format missing values
+// -----------------------------------------
+
+const displayValue = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return "N/A";
+  }
+
+  return value;
+};
+
+// -----------------------------------------
+// Helper: Currency formatting
+// -----------------------------------------
+
+const formatCurrency = (value, currency) => {
+  if (value === null || value === undefined || value === "") {
+    return "N/A";
+  }
+
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) {
+    return "N/A";
+  }
+
+  if (!currency) {
+    return amount.toFixed(2);
+  }
+
+  try {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
+};
+
+// -----------------------------------------
+// Helper: Format quantity
+// -----------------------------------------
+
+const formatNumber = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return "N/A";
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number)
+    ? number.toLocaleString("en-IN", {
+        maximumFractionDigits: 4,
+      })
+    : "N/A";
+};
+
+// -----------------------------------------
+// Reusable information row
+// -----------------------------------------
+
+function InfoRow({ label, value }) {
+  return (
+    <div className="d-flex justify-content-between border-bottom py-2 gap-3">
+      <span className="text-muted">{label}</span>
+      <strong className="text-end">
+        {displayValue(value)}
+      </strong>
+    </div>
+  );
+}
+
+// -----------------------------------------
+// Main Component
+// -----------------------------------------
 
 function InvoiceDetails() {
   const { invoiceId } = useParams();
@@ -15,11 +103,18 @@ function InvoiceDetails() {
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
   const [documentUrl, setDocumentUrl] = useState("");
-const [documentLoading, setDocumentLoading] = useState(false);
-const [documentError, setDocumentError] = useState("");
+  const [documentLoading, setDocumentLoading] = useState(false);
+  const [documentError, setDocumentError] = useState("");
+
+  // ---------------------------------------
+  // Retrieve invoice details
+  // ---------------------------------------
 
   useEffect(() => {
+    let active = true;
+
     const fetchInvoice = async () => {
       try {
         setLoading(true);
@@ -27,79 +122,112 @@ const [documentError, setDocumentError] = useState("");
 
         const data = await getInvoiceDetails(invoiceId);
 
-        setInvoice(data);
+        if (active) {
+          setInvoice(data);
+        }
       } catch (err) {
         console.error("Invoice details error:", err);
 
-        setError(
-          err.response?.data?.detail ||
-          "Unable to retrieve invoice details."
-        );
+        if (active) {
+          setError(
+            err.response?.data?.detail ||
+              "Unable to retrieve invoice details."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
+    setInvoice(null);
     fetchInvoice();
+
+    return () => {
+      active = false;
+    };
   }, [invoiceId]);
 
-useEffect(() => {
-  if (!invoice?.document_id) {
-    setDocumentUrl("");
-    return;
-  }
+  // ---------------------------------------
+  // Retrieve original document
+  // ---------------------------------------
 
-  let objectUrl;
-
-  const fetchDocument = async () => {
-    try {
-      setDocumentLoading(true);
-      setDocumentError("");
+  useEffect(() => {
+    if (!invoice?.document_id) {
       setDocumentUrl("");
-
-      const response = await downloadInvoiceDocument(
-        invoice.document_id
-      );
-
-      const blob = response.data;
-
-      if (!blob || blob.size === 0) {
-        throw new Error("The document is empty.");
-      }
-
-      objectUrl = URL.createObjectURL(blob);
-      setDocumentUrl(objectUrl);
-
-    } catch (err) {
-      console.error("Document preview error:", err);
-
-      setDocumentError(
-        "Unable to load the original invoice document."
-      );
-
-    } finally {
       setDocumentLoading(false);
+      return;
     }
-  };
 
-  fetchDocument();
+    let active = true;
+    let objectUrl = null;
 
-  return () => {
-    if (objectUrl) {
-      URL.revokeObjectURL(objectUrl);
-    }
-  };
+    const fetchDocument = async () => {
+      try {
+        setDocumentLoading(true);
+        setDocumentError("");
+        setDocumentUrl("");
 
-}, [invoice?.document_id]);
+        const response = await downloadInvoiceDocument(
+          invoice.document_id
+        );
+
+        const blob = response.data;
+
+        if (!blob || blob.size === 0) {
+          throw new Error("The document is empty.");
+        }
+
+        objectUrl = URL.createObjectURL(blob);
+
+        if (active) {
+          setDocumentUrl(objectUrl);
+        } else {
+          URL.revokeObjectURL(objectUrl);
+        }
+      } catch (err) {
+        console.error("Document preview error:", err);
+
+        if (active) {
+          setDocumentError(
+            "Unable to load the original invoice document."
+          );
+        }
+      } finally {
+        if (active) {
+          setDocumentLoading(false);
+        }
+      }
+    };
+
+    fetchDocument();
+
+    return () => {
+      active = false;
+
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [invoice?.document_id]);
+
+  // ---------------------------------------
+  // Loading state
+  // ---------------------------------------
 
   if (loading) {
     return (
       <div className="text-center py-5">
-        <LoaderCircle className="spin-animation" />
+        <LoaderCircle className="spin-animation" size={35} />
         <p className="mt-2">Loading invoice details...</p>
       </div>
     );
   }
+
+  // ---------------------------------------
+  // Error state
+  // ---------------------------------------
 
   if (error) {
     return (
@@ -118,242 +246,372 @@ useEffect(() => {
 
   if (!invoice) return null;
 
+  const currency = invoice.currency;
+
+  const contentType = invoice.document?.content_type || "";
+
+  const isPdf = contentType === "application/pdf";
+  const isImage = contentType.startsWith("image/");
+
+  // ---------------------------------------
+  // Render
+  // ---------------------------------------
+
   return (
-    <div className="container-fluid">
+    <div className="container-fluid py-3">
+
+      {/* Back button */}
 
       <button
-        className="btn btn-outline-secondary mb-3"
+        className="btn btn-outline-secondary mb-4"
         onClick={() => navigate("/invoices")}
       >
         <ArrowLeft size={16} className="me-2" />
         Back to Invoices
       </button>
 
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      {/* Page heading */}
+
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+
         <div>
-          <h3>Invoice Details</h3>
-          <p className="text-muted">
-            View original invoice and extracted information.
+          <h3 className="fw-bold mb-1">
+            Invoice Details
+          </h3>
+
+          <p className="text-muted mb-0">
+            Original invoice document and extracted information.
           </p>
         </div>
 
-        <span className="badge bg-warning text-dark">
-          {invoice.processing_status}
+        <span className="badge bg-warning text-dark px-3 py-2">
+          {displayValue(invoice.processing_status)}
         </span>
+
       </div>
 
       <div className="row g-4">
 
-        {/* Original Document Panel */}
+        {/* ================================= */}
+        {/* ORIGINAL DOCUMENT PANEL */}
+        {/* ================================= */}
+
         <div className="col-lg-6">
-          <div className="card h-100">
-           <div className="card-header fw-semibold d-flex justify-content-between align-items-center">
-  <span>
-    <FileText size={18} className="me-2" />
-    Original Invoice Document
-  </span>
 
-  {documentUrl && (
-    <a
-      href={documentUrl}
-      download={
-        invoice.document?.original_filename || "invoice"
-      }
-      className="btn btn-sm btn-outline-primary"
-    >
-      Download
-    </a>
-  )}
-</div>
+          <div className="card shadow-sm h-100">
 
-            <div className="card-body">
-              <p className="text-muted">
-                {invoice.document?.original_filename || "Document"}
-              </p>
+            <div className="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
 
-              <div
-  className="border rounded bg-light"
-  style={{ minHeight: "650px", overflow: "auto" }}
->
-  {documentLoading && (
-    <div className="text-center py-5">
-      <LoaderCircle className="spin-animation" size={30} />
-      <p className="mt-2">Loading original document...</p>
-    </div>
-  )}
-
-  {documentError && (
-    <div className="alert alert-danger m-3">
-      {documentError}
-    </div>
-  )}
-
-  {!documentLoading &&
-    !documentError &&
-    documentUrl &&
-    invoice.document?.content_type === "application/pdf" && (
-      <iframe
-  src={documentUrl}
-  title="Original Invoice PDF"
-  width="100%"
-  height="750"
-  style={{
-    border: "none",
-    display: "block",
-  }}
-/>
-    )}
-
-  {!documentLoading &&
-    !documentError &&
-    documentUrl &&
-    invoice.document?.content_type?.startsWith("image/") && (
-      <div className="text-center p-3">
-        <img
-          src={documentUrl}
-          alt="Original Invoice"
-          className="img-fluid"
-          style={{
-            maxHeight: "750px",
-            objectFit: "contain",
-          }}
-        />
-      </div>
-    )}
-
-  {!documentLoading &&
-    !documentError &&
-    documentUrl &&
-    !["application/pdf"].includes(
-      invoice.document?.content_type
-    ) &&
-    !invoice.document?.content_type?.startsWith("image/") && (
-      <div className="text-center p-5">
-        <FileText size={40} />
-        <p className="mt-3">
-          Preview is not supported for this file type.
-        </p>
-      </div>
-    )}
-</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Extracted Information Panel */}
-        <div className="col-lg-6">
-          <div className="card">
-            <div className="card-header fw-semibold">
-              Extracted Invoice Information
-            </div>
-
-            <div className="card-body">
-
-              <h5>Invoice Information</h5>
-
-              <p>
-                <strong>Invoice Number:</strong>{" "}
-                {invoice.invoice_number || "N/A"}
-              </p>
-
-              <p>
-                <strong>Purchase Order:</strong>{" "}
-                {invoice.purchase_order_number || "N/A"}
-              </p>
-
-              <p>
-                <strong>Supplier:</strong>{" "}
-                {invoice.supplier?.name || "N/A"}
-              </p>
-
-              <p>
-                <strong>Supplier Tax ID:</strong>{" "}
-                {invoice.supplier?.tax_id || "N/A"}
-              </p>
-
-              <p>
-                <strong>Invoice Date:</strong>{" "}
-                {invoice.invoice_date || "N/A"}
-              </p>
-
-              <p>
-                <strong>Due Date:</strong>{" "}
-                {invoice.due_date || "N/A"}
-              </p>
-
-              <p>
-                <strong>Payment Terms:</strong>{" "}
-                {invoice.payment_terms || "N/A"}
-              </p>
-
-              <hr />
-
-              <h5>Financial Information</h5>
-
-              <p>
-                <strong>Currency:</strong>{" "}
-                {invoice.currency || "N/A"}
-              </p>
-
-              <p>
-                <strong>Subtotal:</strong>{" "}
-                {invoice.subtotal ?? "N/A"}
-              </p>
-
-              <p>
-                <strong>Tax:</strong>{" "}
-                {invoice.tax ?? "N/A"}
-              </p>
-
-              <p>
-                <strong>Discount:</strong>{" "}
-                {invoice.discount ?? "N/A"}
-              </p>
-
-              <h5 className="text-success mt-3">
-                Total: {invoice.currency || ""}{" "}
-                {invoice.total_amount ?? "N/A"}
+              <h5 className="mb-0 fw-semibold">
+                <FileText size={19} className="me-2" />
+                Original Invoice
               </h5>
 
-              <hr />
-
-              <h5>Line Items</h5>
-
-              {invoice.line_items?.length > 0 ? (
-                <div className="table-responsive">
-                  <table className="table table-bordered table-sm">
-                    <thead>
-                      <tr>
-                        <th>Description</th>
-                        <th>Quantity</th>
-                        <th>Unit Price</th>
-                        <th>Total</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {invoice.line_items.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.description}</td>
-                          <td>{item.quantity}</td>
-                          <td>{item.unit_price}</td>
-                          <td>{item.line_total}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-muted">
-                  No line items available.
-                </p>
+              {documentUrl && (
+                <a
+                  href={documentUrl}
+                  download={
+                    invoice.document?.original_filename || "invoice"
+                  }
+                  className="btn btn-sm btn-primary"
+                >
+                  <Download size={15} className="me-1" />
+                  Download
+                </a>
               )}
 
             </div>
+
+            <div className="card-body">
+
+              <p className="text-muted small mb-3">
+                {displayValue(
+                  invoice.document?.original_filename
+                )}
+              </p>
+
+              <div
+                className="border rounded bg-light"
+                style={{
+                  minHeight: "650px",
+                  overflow: "auto",
+                }}
+              >
+
+                {documentLoading && (
+                  <div className="text-center py-5">
+                    <LoaderCircle
+                      className="spin-animation"
+                      size={32}
+                    />
+                    <p className="mt-2">
+                      Loading original document...
+                    </p>
+                  </div>
+                )}
+
+                {documentError && (
+                  <div className="alert alert-danger m-3">
+                    {documentError}
+                  </div>
+                )}
+
+                {!documentLoading &&
+                  !documentError &&
+                  documentUrl &&
+                  isPdf && (
+                    <iframe
+                      src={documentUrl}
+                      title="Original Invoice PDF"
+                      width="100%"
+                      height="750"
+                      style={{
+                        border: "none",
+                        display: "block",
+                      }}
+                    />
+                  )}
+
+                {!documentLoading &&
+                  !documentError &&
+                  documentUrl &&
+                  isImage && (
+                    <div className="text-center p-3">
+                      <img
+                        src={documentUrl}
+                        alt="Original Invoice"
+                        className="img-fluid"
+                        style={{
+                          maxHeight: "750px",
+                          objectFit: "contain",
+                        }}
+                      />
+                    </div>
+                  )}
+
+                {!documentLoading &&
+                  !documentError &&
+                  documentUrl &&
+                  !isPdf &&
+                  !isImage && (
+                    <div className="text-center p-5">
+                      <FileText size={40} />
+
+                      <p className="mt-3">
+                        Preview is not supported for this file type.
+                      </p>
+                    </div>
+                  )}
+
+                {!documentLoading &&
+                  !documentError &&
+                  !documentUrl && (
+                    <div className="text-center py-5 text-muted">
+                      Original document is unavailable.
+                    </div>
+                  )}
+
+              </div>
+
+            </div>
           </div>
         </div>
 
+        {/* ================================= */}
+        {/* EXTRACTED INFORMATION */}
+        {/* ================================= */}
+
+        <div className="col-lg-6">
+
+          {/* Invoice Information */}
+
+          <div className="card shadow-sm mb-4">
+
+            <div className="card-header bg-white">
+              <h5 className="fw-semibold mb-0">
+                <Receipt size={19} className="me-2" />
+                Invoice Information
+              </h5>
+            </div>
+
+            <div className="card-body">
+
+              <InfoRow
+                label="Invoice Number"
+                value={invoice.invoice_number}
+              />
+
+              <InfoRow
+                label="Purchase Order"
+                value={invoice.purchase_order_number}
+              />
+
+              <InfoRow
+                label="Supplier"
+                value={invoice.supplier?.name}
+              />
+
+              <InfoRow
+                label="Supplier Tax ID"
+                value={invoice.supplier?.tax_id}
+              />
+
+              <InfoRow
+                label="Invoice Date"
+                value={invoice.invoice_date}
+              />
+
+              <InfoRow
+                label="Due Date"
+                value={invoice.due_date}
+              />
+
+              <InfoRow
+                label="Payment Terms"
+                value={invoice.payment_terms}
+              />
+
+            </div>
+          </div>
+
+          {/* Financial Summary */}
+
+          <div className="card shadow-sm mb-4">
+
+            <div className="card-header bg-white">
+              <h5 className="fw-semibold mb-0">
+                <Building2 size={19} className="me-2" />
+                Financial Summary
+              </h5>
+            </div>
+
+            <div className="card-body">
+
+              <InfoRow
+                label="Currency"
+                value={currency}
+              />
+
+              <InfoRow
+                label="Subtotal"
+                value={formatCurrency(invoice.subtotal, currency)}
+              />
+
+              <InfoRow
+                label="Tax"
+                value={formatCurrency(invoice.tax, currency)}
+              />
+
+              <InfoRow
+                label="Discount"
+                value={formatCurrency(invoice.discount, currency)}
+              />
+
+              <div className="d-flex justify-content-between align-items-center mt-3 p-3 bg-light rounded">
+
+                <strong className="fs-5">
+                  Total Amount
+                </strong>
+
+                <strong className="fs-5 text-success">
+                  {formatCurrency(invoice.total_amount, currency)}
+                </strong>
+
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
       </div>
+
+      {/* ================================= */}
+      {/* LINE ITEMS */}
+      {/* ================================= */}
+
+      <div className="card shadow-sm mt-4">
+
+        <div className="card-header bg-white">
+
+          <h5 className="fw-semibold mb-0">
+            Line Items
+          </h5>
+
+        </div>
+
+        <div className="card-body">
+
+          {invoice.line_items?.length > 0 ? (
+
+            <div className="table-responsive">
+
+              <table className="table table-bordered table-hover align-middle">
+
+                <thead className="table-light">
+                  <tr>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Tax Rate</th>
+                    <th>Tax Amount</th>
+                    <th>Line Total</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {invoice.line_items.map((item) => (
+
+                    <tr key={item.id}>
+
+                      <td>
+                        {displayValue(item.description)}
+                      </td>
+
+                      <td>
+                        {formatNumber(item.quantity)}
+                      </td>
+
+                      <td>
+                        {formatCurrency(item.unit_price, currency)}
+                      </td>
+
+                      <td>
+                        {item.tax_rate == null
+                          ? "N/A"
+                          : `${formatNumber(item.tax_rate)}%`}
+                      </td>
+
+                      <td>
+                        {formatCurrency(item.tax_amount, currency)}
+                      </td>
+
+                      <td className="fw-semibold">
+                        {formatCurrency(item.line_total, currency)}
+                      </td>
+
+                    </tr>
+
+                  ))}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          ) : (
+
+            <p className="text-muted mb-0">
+              No line items available.
+            </p>
+
+          )}
+
+        </div>
+      </div>
+
     </div>
   );
 }
