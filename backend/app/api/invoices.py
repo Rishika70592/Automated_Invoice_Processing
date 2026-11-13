@@ -282,6 +282,7 @@ def get_invoice(
             ],
             "document": (
                 {
+                    "id": invoice.document.id,
                     "original_filename": invoice.document.original_filename,
                     "content_type": invoice.document.content_type,
                     "file_size": invoice.document.file_size,
