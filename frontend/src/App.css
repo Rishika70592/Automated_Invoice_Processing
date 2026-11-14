@@ -182,3 +182,257 @@
     border-right-color: var(--border);
   }
 }
+
+/* Dashboard summary cards */
+
+.dashboard-stat-card {
+  border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dashboard-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Quick action icons */
+
+.dashboard-action-icon {
+  width: 43px;
+  height: 43px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Quick action hover */
+
+.card button.btn-light {
+  transition: background-color 0.2s ease,
+              border-color 0.2s ease;
+}
+
+.card button.btn-light:hover {
+  background-color: #f0f5ff;
+  border-color: #b6ccff !important;
+}
+
+/* Progress bars */
+
+.progress {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  transition: width 0.5s ease;
+}
+
+/* Table */
+
+.table th {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table td {
+  font-size: 14px;
+}
+
+/* Refresh animation */
+
+.spin-animation {
+  animation: dashboard-spin 1s linear infinite;
+}
+
+@keyframes dashboard-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+
+@media (max-width: 576px) {
+  .dashboard-stat-card .card-body {
+    padding: 18px !important;
+  }
+
+  .dashboard-icon {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+/* Dashboard Summary Cards */
+
+.dashboard-stat-card {
+  border-radius: 14px;
+  transition: all 0.25s ease;
+  background: #ffffff;
+}
+
+.dashboard-stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dashboard-icon {
+  width: 55px;
+  height: 55px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dashboard-stat-card h2 {
+  font-size: 28px;
+  color: #212529;
+}
+
+.dashboard-stat-card p {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+@media (max-width: 576px) {
+  .dashboard-stat-card .card-body {
+    padding: 18px !important;
+  }
+
+  .dashboard-icon {
+    width: 45px;
+    height: 45px;
+  }
+
+  .dashboard-stat-card h2 {
+    font-size: 24px;
+  }
+}
+
+/* Invoice Processing Overview */
+
+.dashboard-overview {
+  border-radius: 14px;
+}
+
+.dashboard-overview .progress {
+  height: 12px;
+  border-radius: 20px;
+  background-color: #e9ecef;
+}
+
+.dashboard-overview .progress-bar {
+  border-radius: 20px;
+  transition: width 0.6s ease;
+}
+
+.overview-item {
+  background: #f8f9fc;
+  border: 1px solid #edf0f5;
+  transition: all 0.2s ease;
+}
+
+.overview-item:hover {
+  background: #f0f5ff;
+  transform: translateY(-3px);
+}
+
+.overview-item h4 {
+  font-size: 24px;
+}
+
+/* Dashboard Quick Action Cards */
+
+.dashboard-action-card {
+  border-radius: 14px;
+  transition: all 0.25s ease;
+}
+
+.dashboard-action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dashboard-action-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-action-card button {
+  transition: all 0.2s ease;
+}
+
+.dashboard-action-card button:hover {
+  background-color: #f0f5ff;
+  border-color: #b6ccff !important;
+}
+
+/* Recent Invoices */
+
+.dashboard-recent-card {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.dashboard-table {
+  margin-bottom: 0;
+}
+
+.dashboard-table thead th {
+  font-size: 13px;
+  font-weight: 600;
+  color: #495057;
+  padding: 14px 12px;
+  white-space: nowrap;
+}
+
+.dashboard-table tbody td {
+  padding: 15px 12px;
+  font-size: 14px;
+}
+
+.dashboard-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.dashboard-table tbody tr:hover {
+  background-color: #f8faff;
+}
+
+.dashboard-recent-card .btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 576px) {
+  .dashboard-recent-card .card-body {
+    padding: 15px !important;
+  }
+
+  .dashboard-table tbody td {
+    padding: 12px 10px;
+  }
+}

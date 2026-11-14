@@ -77,6 +77,85 @@ const formatNumber = (value) => {
     : "N/A";
 };
 
+
+
+// -----------------------------------------
+// Helper: Format invoice dates
+// -----------------------------------------
+
+const formatDate = (value) => {
+  if (!value) {
+    return "N/A";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "N/A";
+  }
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+};
+
+
+// -----------------------------------------
+// Helper: Basic financial consistency check
+// -----------------------------------------
+
+const checkFinancialConsistency = (invoice) => {
+  const { subtotal, tax, discount, total_amount } = invoice;
+
+  const values = [subtotal, tax, discount, total_amount];
+
+  if (
+    values.some(
+      (value) =>
+        value === null ||
+        value === undefined ||
+        value === "" ||
+        !Number.isFinite(Number(value))
+    )
+  ) {
+    return {
+      available: false,
+      message: "Insufficient financial information for comparison.",
+    };
+  }
+
+  const expectedTotal =
+    Number(subtotal) +
+    Number(tax) -
+    Number(discount);
+
+  const actualTotal = Number(total_amount);
+
+  const difference = Math.abs(expectedTotal - actualTotal);
+
+  if (difference <= 0.02) {
+    return {
+      available: true,
+      valid: true,
+      expectedTotal,
+      actualTotal,
+      difference,
+      message: "Basic financial calculation is consistent.",
+    };
+  }
+
+  return {
+    available: true,
+    valid: false,
+    expectedTotal,
+    actualTotal,
+    difference,
+    message: "Financial values require manual verification.",
+  };
+};
+
 // -----------------------------------------
 // Reusable information row
 // -----------------------------------------
@@ -247,7 +326,7 @@ function InvoiceDetails() {
   if (!invoice) return null;
 
   const currency = invoice.currency;
-
+  const financialCheck = checkFinancialConsistency(invoice);
   const contentType = invoice.document?.content_type || "";
 
   const isPdf = contentType === "application/pdf";
@@ -455,16 +534,26 @@ function InvoiceDetails() {
                 label="Supplier Tax ID"
                 value={invoice.supplier?.tax_id}
               />
+<InfoRow
+  label="Shipping Charges"
+  value={formatCurrency(invoice.shipping_charges, currency)}
+/>
 
+<InfoRow
+  label="Other Charges"
+  value={formatCurrency(invoice.other_charges, currency)}
+/>
               <InfoRow
-                label="Invoice Date"
-                value={invoice.invoice_date}
-              />
+  label="Invoice Date"
+  value={formatDate(invoice.invoice_date)}
+/>
 
-              <InfoRow
-                label="Due Date"
-                value={invoice.due_date}
-              />
+<InfoRow
+  label="Due Date"
+  value={formatDate(invoice.due_date)}
+/>
+
+              
 
               <InfoRow
                 label="Payment Terms"
@@ -485,46 +574,124 @@ function InvoiceDetails() {
               </h5>
             </div>
 
-            <div className="card-body">
+            
+<div className="card-body">
 
-              <InfoRow
-                label="Currency"
-                value={currency}
-              />
+  <InfoRow
+    label="Currency"
+    value={displayValue(currency)}
+  />
 
-              <InfoRow
-                label="Subtotal"
-                value={formatCurrency(invoice.subtotal, currency)}
-              />
+  <InfoRow
+    label="Subtotal"
+    value={formatCurrency(invoice.subtotal, currency)}
+  />
 
-              <InfoRow
-                label="Tax"
-                value={formatCurrency(invoice.tax, currency)}
-              />
+  <InfoRow
+    label="Tax Amount"
+    value={formatCurrency(invoice.tax, currency)}
+  />
 
-              <InfoRow
-                label="Discount"
-                value={formatCurrency(invoice.discount, currency)}
-              />
+  <InfoRow
+    label="Discount"
+    value={formatCurrency(invoice.discount, currency)}
+  />
 
-              <div className="d-flex justify-content-between align-items-center mt-3 p-3 bg-light rounded">
+  <div className="d-flex justify-content-between align-items-center mt-3 p-3 bg-light rounded">
 
-                <strong className="fs-5">
-                  Total Amount
-                </strong>
+    <strong className="fs-5">
+      Total Invoice Amount
+    </strong>
 
-                <strong className="fs-5 text-success">
-                  {formatCurrency(invoice.total_amount, currency)}
-                </strong>
+    <strong className="fs-5 text-success">
+      {formatCurrency(invoice.total_amount, currency)}
+    </strong>
 
-              </div>
+  </div>
 
-            </div>
+  <p className="text-muted small mt-2 mb-0">
+    Financial values are displayed as extracted or stored.
+    Missing information is not automatically calculated.
+  </p>
+
+</div>
+
           </div>
 
         </div>
 
       </div>
+
+
+
+{/* Financial Consistency Check */}
+
+<div className="card shadow-sm mb-4">
+
+  <div className="card-header bg-white">
+    <h5 className="fw-semibold mb-0">
+      Financial Verification
+    </h5>
+  </div>
+
+  <div className="card-body">
+
+    {!financialCheck.available ? (
+
+      <div className="alert alert-secondary mb-0">
+        {financialCheck.message}
+      </div>
+
+    ) : (
+
+      <>
+        <div
+          className={`alert ${
+            financialCheck.valid
+              ? "alert-success"
+              : "alert-warning"
+          } mb-3`}
+        >
+          <strong>
+            {financialCheck.valid
+              ? "Calculation Consistent"
+              : "Manual Verification Required"}
+          </strong>
+
+          <p className="mb-0 mt-1">
+            {financialCheck.message}
+          </p>
+        </div>
+
+        <InfoRow
+          label="Calculated Total"
+          value={formatCurrency(
+            financialCheck.expectedTotal,
+            currency
+          )}
+        />
+
+        <InfoRow
+          label="Extracted Total"
+          value={formatCurrency(
+            financialCheck.actualTotal,
+            currency
+          )}
+        />
+
+        <InfoRow
+          label="Difference"
+          value={formatCurrency(
+            financialCheck.difference,
+            currency
+          )}
+        />
+      </>
+
+    )}
+
+  </div>
+</div>
 
       {/* ================================= */}
       {/* LINE ITEMS */}
@@ -548,54 +715,57 @@ function InvoiceDetails() {
 
               <table className="table table-bordered table-hover align-middle">
 
-                <thead className="table-light">
-                  <tr>
-                    <th>Description</th>
-                    <th>Quantity</th>
-                    <th>Unit Price</th>
-                    <th>Tax Rate</th>
-                    <th>Tax Amount</th>
-                    <th>Line Total</th>
-                  </tr>
-                </thead>
+               <thead className="table-light">
+  <tr>
+    <th>#</th>
+    <th>Description</th>
+    <th>Quantity</th>
+    <th>Unit Price</th>
+    <th>Tax Rate</th>
+    <th>Tax Amount</th>
+    <th>Line Total</th>
+  </tr>
+</thead>
 
                 <tbody>
 
-                  {invoice.line_items.map((item) => (
+  {invoice.line_items.map((item, index) => (
 
-                    <tr key={item.id}>
+    <tr key={item.id || index}>
 
-                      <td>
-                        {displayValue(item.description)}
-                      </td>
+      <td>{index + 1}</td>
 
-                      <td>
-                        {formatNumber(item.quantity)}
-                      </td>
+      <td>
+        {displayValue(item.description)}
+      </td>
 
-                      <td>
-                        {formatCurrency(item.unit_price, currency)}
-                      </td>
+      <td>
+        {formatNumber(item.quantity)}
+      </td>
 
-                      <td>
-                        {item.tax_rate == null
-                          ? "N/A"
-                          : `${formatNumber(item.tax_rate)}%`}
-                      </td>
+      <td>
+        {formatCurrency(item.unit_price, currency)}
+      </td>
 
-                      <td>
-                        {formatCurrency(item.tax_amount, currency)}
-                      </td>
+      <td>
+        {item.tax_rate == null
+          ? "N/A"
+          : `${formatNumber(item.tax_rate)}%`}
+      </td>
 
-                      <td className="fw-semibold">
-                        {formatCurrency(item.line_total, currency)}
-                      </td>
+      <td>
+        {formatCurrency(item.tax_amount, currency)}
+      </td>
 
-                    </tr>
+      <td className="fw-semibold">
+        {formatCurrency(item.line_total, currency)}
+      </td>
 
-                  ))}
+    </tr>
 
-                </tbody>
+  ))}
+
+</tbody>
 
               </table>
 

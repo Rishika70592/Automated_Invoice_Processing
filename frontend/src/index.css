@@ -97,3 +97,101 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* Dashboard summary cards */
+
+.dashboard-stat-card {
+  border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dashboard-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Quick action icons */
+
+.dashboard-action-icon {
+  width: 43px;
+  height: 43px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Quick action hover */
+
+.card button.btn-light {
+  transition: background-color 0.2s ease,
+              border-color 0.2s ease;
+}
+
+.card button.btn-light:hover {
+  background-color: #f0f5ff;
+  border-color: #b6ccff !important;
+}
+
+/* Progress bars */
+
+.progress {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  transition: width 0.5s ease;
+}
+
+/* Table */
+
+.table th {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table td {
+  font-size: 14px;
+}
+
+/* Refresh animation */
+
+.spin-animation {
+  animation: dashboard-spin 1s linear infinite;
+}
+
+@keyframes dashboard-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+
+@media (max-width: 576px) {
+  .dashboard-stat-card .card-body {
+    padding: 18px !important;
+  }
+
+  .dashboard-icon {
+    width: 42px;
+    height: 42px;
+  }
+}
