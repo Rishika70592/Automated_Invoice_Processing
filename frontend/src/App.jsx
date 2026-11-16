@@ -7,6 +7,7 @@ import InvoiceList from "./pages/InvoiceList";
 import InvoiceDetails from "./pages/invoiceDetails";
 import Settings from "./pages/Settings";
 import InvoiceUpload from "./pages/InvoiceUpload";
+import EditInvoice from "./pages/EditInvoice";
 function App() {
   return (
     <BrowserRouter>
@@ -19,6 +20,10 @@ function App() {
             element={<InvoiceDetails />}
           />
           <Route path="/settings" element={<Settings />} />
+          <Route
+  path="/invoices/:invoiceId/edit"
+  element={<EditInvoice />}
+/>
           <Route
   path="/invoices/upload"
   element={<InvoiceUpload />}

@@ -109,6 +109,13 @@ class Invoice(Base):
        server_default="needs_review",
        index=True,
     )
+    review_status: Mapped[str] = mapped_column(
+    String(30),
+    nullable=False,
+    default="needs_review",
+    server_default="needs_review",
+    index=True,
+)
     extraction_method: Mapped[str | None] = mapped_column(
         String(30),
         nullable=True,

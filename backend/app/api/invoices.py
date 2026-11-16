@@ -6,6 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from datetime import date
+from decimal import Decimal
+
+from app.models import AuditLog
+from app.schemas.invoice_management import InvoiceUpdate
+
 from app.db.database import get_db
 from app.models import (
     Document,
@@ -265,6 +271,7 @@ def get_invoice(
             "tax": invoice.tax,
             "discount": invoice.discount,
             "total_amount": invoice.total_amount,
+            "review_status": invoice.review_status,
             "processing_status": invoice.processing_status,
             "extraction_method": invoice.extraction_method,
             "model_name": invoice.model_name,
@@ -302,6 +309,40 @@ def get_invoice(
 # ---------------------------------------------------------
 
 
+def audit_value(value):
+    """Convert values into JSON-serializable representations."""
+
+    if isinstance(value, (date,)):
+        return value.isoformat()
+
+    if isinstance(value, Decimal):
+        return str(value)
+
+    return value
+
+
+def create_audit_log(
+    db: Session,
+    invoice: Invoice,
+    action: str,
+    entity_type: str,
+    entity_id: str,
+    details: dict,
+    description: str,
+):
+    db.add(
+        AuditLog(
+            user_id=None,  # Authentication not implemented yet.
+            document_id=invoice.document_id,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            details=details,
+            description=description,
+        )
+    )
+
+
 @router.put("/{invoice_id}")
 def update_invoice(
     invoice_id: str,
@@ -312,7 +353,10 @@ def update_invoice(
 
     invoice = db.scalar(
         select(Invoice)
-        .options(selectinload(Invoice.line_items))
+        .options(
+            selectinload(Invoice.line_items),
+            selectinload(Invoice.supplier),
+        )
         .where(Invoice.id == invoice_id)
     )
 
@@ -322,29 +366,135 @@ def update_invoice(
             detail="Invoice not found.",
         )
 
-    update_data = payload.model_dump(exclude_unset=True)
-
-    line_items = update_data.pop("line_items", None)
-
-    # Preserve existing values for fields not submitted.
-    for field, value in update_data.items():
-        setattr(invoice, field, value)
-
-    # Replace line items only when explicitly provided.
-    if line_items is not None:
-        invoice.line_items.clear()
-
-        for item in line_items:
-            invoice.line_items.append(
-                InvoiceLineItem(**item)
-            )
-
     try:
-        # Rebuild structured invoice data.
+        update_data = payload.model_dump(exclude_unset=True)
+
+        changes = []
+
+        # ----------------------------------
+        # 1. Update invoice fields
+        # ----------------------------------
+
+        line_items = update_data.pop("line_items", None)
+        supplier_data = update_data.pop("supplier", None)
+
+        for field, new_value in update_data.items():
+
+            old_value = getattr(invoice, field)
+
+            if old_value != new_value:
+
+                changes.append({
+                    "field": field,
+                    "old_value": audit_value(old_value),
+                    "new_value": audit_value(new_value),
+                })
+
+                setattr(invoice, field, new_value)
+
+        # ----------------------------------
+        # 2. Update supplier information
+        # ----------------------------------
+
+        if supplier_data is not None:
+
+            if invoice.supplier is None:
+
+                supplier_name = supplier_data.get("name")
+
+                if not supplier_name or not supplier_name.strip():
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Supplier name is required when creating a supplier.",
+                    )
+
+                invoice.supplier = Supplier(
+                    name=supplier_name.strip()
+                )
+
+            supplier = invoice.supplier
+
+            for field, new_value in supplier_data.items():
+
+                if field == "name" and (
+                    new_value is None or not new_value.strip()
+                ):
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Supplier name cannot be empty.",
+                    )
+
+                old_value = getattr(supplier, field)
+
+                if old_value != new_value:
+
+                    changes.append({
+                        "field": f"supplier.{field}",
+                        "old_value": audit_value(old_value),
+                        "new_value": audit_value(new_value),
+                    })
+
+                    setattr(supplier, field, new_value)
+
+        # ----------------------------------
+        # 3. Update line items
+        # ----------------------------------
+
+        if line_items is not None:
+
+            old_items = [
+                {
+                    "description": item.description,
+                    "quantity": audit_value(item.quantity),
+                    "unit_price": audit_value(item.unit_price),
+                    "tax_rate": audit_value(item.tax_rate),
+                    "tax_amount": audit_value(item.tax_amount),
+                    "line_total": audit_value(item.line_total),
+                }
+                for item in invoice.line_items
+            ]
+
+            new_items = [
+                item.model_dump()
+                for item in payload.line_items
+            ]
+
+            new_items = [
+                {
+                    key: audit_value(value)
+                    for key, value in item.items()
+                }
+                for item in new_items
+            ]
+
+            if old_items != new_items:
+
+                invoice.line_items.clear()
+
+                for item in line_items:
+                    invoice.line_items.append(
+                        InvoiceLineItem(**item)
+                    )
+
+                changes.append({
+                    "field": "line_items",
+                    "old_value": old_items,
+                    "new_value": new_items,
+                })
+
+        # ----------------------------------
+        # 4. Revalidate invoice
+        # ----------------------------------
+
         invoice_data = InvoiceData(
             invoice_number=invoice.invoice_number,
             supplier_name=(
                 invoice.supplier.name
+                if invoice.supplier
+                else None
+            ),
+            supplier_tax_id=(
+                invoice.supplier.tax_id
                 if invoice.supplier
                 else None
             ),
@@ -370,12 +520,37 @@ def update_invoice(
             ],
         )
 
-        # Run validation again.
         validation = validate_invoice(invoice_data)
 
-        invoice.processing_status = validation["status"]
+        # ----------------------------------
+        # 5. Update review status
+        # ----------------------------------
 
-        # Store a new validation history record.
+        if changes:
+            invoice.review_status = "needs_review"
+
+        # ----------------------------------
+        # 6. Create audit records
+        # ----------------------------------
+
+        for change in changes:
+
+            create_audit_log(
+                db=db,
+                invoice=invoice,
+                action="INVOICE_FIELD_UPDATED",
+                entity_type="invoice",
+                entity_id=invoice.id,
+                details=change,
+                description=(
+                    f"Manually updated {change['field']}."
+                ),
+            )
+
+        # ----------------------------------
+        # 7. Save validation history
+        # ----------------------------------
+
         db.add(
             ValidationResult(
                 document_id=invoice.document_id,
@@ -388,6 +563,10 @@ def update_invoice(
             )
         )
 
+        # ----------------------------------
+        # 8. Commit transaction
+        # ----------------------------------
+
         db.commit()
         db.refresh(invoice)
 
@@ -396,20 +575,24 @@ def update_invoice(
             "message": "Invoice updated and revalidated successfully.",
             "invoice_id": invoice.id,
             "processing_status": invoice.processing_status,
+            "review_status": invoice.review_status,
+            "updated_fields": [
+                change["field"] for change in changes
+            ],
             "validation": validation,
         }
 
+    except HTTPException:
+        db.rollback()
+        raise
+
     except Exception as exc:
         db.rollback()
-
-        if isinstance(exc, HTTPException):
-            raise
 
         raise HTTPException(
             status_code=500,
             detail="Could not update and validate invoice.",
         ) from exc
-
 
 # ---------------------------------------------------------
 # 5. Get Invoice Validation History
@@ -458,5 +641,50 @@ def get_invoice_validation(
                 "validated_at": result.validated_at,
             }
             for result in validation_results
+        ],
+    }
+
+
+    ##audit log
+
+    
+@router.get("/{invoice_id}/audit-logs")
+def get_invoice_audit_logs(
+    invoice_id: str,
+    db: Session = Depends(get_db),
+):
+    invoice_id = validate_uuid(invoice_id)
+
+    invoice = db.get(Invoice, invoice_id)
+
+    if invoice is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Invoice not found.",
+        )
+
+    logs = db.scalars(
+        select(AuditLog)
+        .where(
+            AuditLog.entity_type == "invoice",
+            AuditLog.entity_id == invoice_id,
+        )
+        .order_by(AuditLog.created_at.desc())
+    ).all()
+
+    return {
+        "success": True,
+        "invoice_id": invoice_id,
+        "total": len(logs),
+        "audit_logs": [
+            {
+                "id": log.id,
+                "action": log.action,
+                "details": log.details,
+                "description": log.description,
+                "user_id": log.user_id,
+                "created_at": log.created_at,
+            }
+            for log in logs
         ],
     }

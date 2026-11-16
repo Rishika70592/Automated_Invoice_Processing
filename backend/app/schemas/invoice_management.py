@@ -1,3 +1,4 @@
+
 from datetime import date
 from decimal import Decimal
 
@@ -5,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class InvoiceLineItemUpdate(BaseModel):
+    """Schema for manually correcting an invoice line item."""
+
     model_config = ConfigDict(extra="forbid")
 
     description: str | None = None
@@ -15,7 +18,21 @@ class InvoiceLineItemUpdate(BaseModel):
     line_total: Decimal | None = None
 
 
+class SupplierUpdate(BaseModel):
+    """Schema for correcting supplier information."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    tax_id: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    address: str | None = None
+
+
 class InvoiceUpdate(BaseModel):
+    """Schema for manually updating extracted invoice information."""
+
     model_config = ConfigDict(extra="forbid")
 
     invoice_number: str | None = None
@@ -31,5 +48,7 @@ class InvoiceUpdate(BaseModel):
     tax: Decimal | None = None
     discount: Decimal | None = None
     total_amount: Decimal | None = None
+
+    supplier: SupplierUpdate | None = None
 
     line_items: list[InvoiceLineItemUpdate] | None = None

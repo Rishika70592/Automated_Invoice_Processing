@@ -10,11 +10,12 @@ import {
   Building2,
   Receipt,
 } from "lucide-react";
-
 import {
   getInvoiceDetails,
   downloadInvoiceDocument,
+  getInvoiceAuditLogs,
 } from "../api/invoiceApi";
+//
 
 // -----------------------------------------
 // Helper: Format missing values
@@ -27,6 +28,64 @@ const displayValue = (value) => {
 
   return value;
 };
+
+const formatAuditValue = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return "N/A";
+  }
+
+  if (Array.isArray(value)) {
+    return (
+      <div>
+        {value.map((item, index) => (
+          <div
+            key={index}
+            className="border rounded p-2 mb-2 bg-light"
+          >
+            <strong>Item {index + 1}</strong>
+
+            {Object.entries(item).map(([key, val]) => (
+              <div key={key} className="small mt-1">
+                <span className="text-muted">
+                  {key.replaceAll("_", " ")}:
+                </span>{" "}
+                <strong>
+                  {val === null || val === undefined || val === ""
+                    ? "N/A"
+                    : String(val)}
+                </strong>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (typeof value === "object") {
+    return JSON.stringify(value, null, 2);
+  }
+
+  return String(value);
+};
+
+const formatAuditAction = (action) => {
+  const actions = {
+    INVOICE_FIELD_UPDATED: "Field Updated",
+    invoice_extracted: "Invoice Extracted",
+  };
+
+  return actions[action] || action;
+};
+
+const formatFieldName = (field) => {
+  if (!field) return "N/A";
+
+  return field
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 
 // -----------------------------------------
 // Helper: Currency formatting
@@ -186,6 +245,9 @@ function InvoiceDetails() {
   const [documentUrl, setDocumentUrl] = useState("");
   const [documentLoading, setDocumentLoading] = useState(false);
   const [documentError, setDocumentError] = useState("");
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(true);
+  const [auditError, setAuditError] = useState("");
 
   // ---------------------------------------
   // Retrieve invoice details
@@ -291,6 +353,38 @@ function InvoiceDetails() {
     };
   }, [invoice?.document_id]);
 
+  useEffect(() => {
+  let active = true;
+
+  const fetchAuditLogs = async () => {
+    try {
+      setAuditLoading(true);
+      setAuditError("");
+
+      const response = await getInvoiceAuditLogs(invoiceId);
+
+      if (active) {
+        setAuditLogs(response.audit_logs || []);
+      }
+    } catch (err) {
+      console.error("Audit history error:", err);
+
+      if (active) {
+        setAuditError("Unable to retrieve audit history.");
+      }
+    } finally {
+      if (active) {
+        setAuditLoading(false);
+      }
+    }
+  };
+
+  fetchAuditLogs();
+
+  return () => {
+    active = false;
+  };
+}, [invoiceId]);
   // ---------------------------------------
   // Loading state
   // ---------------------------------------
@@ -341,18 +435,31 @@ function InvoiceDetails() {
 
       {/* Back button */}
 
-      <button
-        className="btn btn-outline-secondary mb-4"
-        onClick={() => navigate("/invoices")}
-      >
-        <ArrowLeft size={16} className="me-2" />
-        Back to Invoices
-      </button>
+      
 
       {/* Page heading */}
 
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+{/* Back and Edit buttons */}
 
+<div className="d-flex justify-content-between align-items-center mb-4">
+
+  <button
+    className="btn btn-outline-secondary"
+    onClick={() => navigate("/invoices")}
+  >
+    <ArrowLeft size={16} className="me-2" />
+    Back to Invoices
+  </button>
+
+  <button
+    className="btn btn-primary"
+    onClick={() => navigate(`/invoices/${invoiceId}/edit`)}
+  >
+    Edit Invoice
+  </button>
+
+</div>
         <div>
           <h3 className="fw-bold mb-1">
             Invoice Details
@@ -778,6 +885,128 @@ function InvoiceDetails() {
             </p>
 
           )}
+          
+
+
+{/* ================================= */}
+{/* AUDIT HISTORY */}
+{/* ================================= */}
+
+<div className="card shadow-sm mt-4 mb-4">
+
+  <div className="card-header bg-white d-flex justify-content-between align-items-center">
+    <h5 className="fw-semibold mb-0">
+      Audit History
+    </h5>
+
+    <span className="badge bg-secondary">
+      {auditLogs.length} Records
+    </span>
+  </div>
+
+  <div className="card-body">
+
+    {auditLoading ? (
+
+      <div className="text-center py-4">
+        <LoaderCircle className="spin-animation" size={30} />
+        <p className="text-muted mt-2 mb-0">
+          Loading audit history...
+        </p>
+      </div>
+
+    ) : auditError ? (
+
+      <div className="alert alert-danger mb-0">
+        {auditError}
+      </div>
+
+    ) : auditLogs.length === 0 ? (
+
+      <div className="text-center text-muted py-4">
+        No audit history available.
+      </div>
+
+    ) : (
+
+      <div className="table-responsive">
+
+        <table className="table table-bordered table-hover align-middle">
+
+          <thead className="table-light">
+            <tr>
+              <th>Action</th>
+              <th>Updated Field</th>
+              <th>Old Value</th>
+              <th>New Value</th>
+              <th>Date & Time</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            {auditLogs.map((log) => (
+
+              <tr key={log.id}>
+
+                <td>
+                  <span className={`badge ${
+                    log.action === "invoice_extracted"
+                      ? "bg-success"
+                      : "bg-primary"
+                  }`}>
+                    {formatAuditAction(log.action)}
+                  </span>
+                </td>
+
+                <td>
+                  {formatFieldName(log.details?.field)}
+                </td>
+
+                <td style={{ minWidth: "180px" }}>
+  <div className="p-2 rounded bg-light border">
+    <span className="badge bg-secondary mb-2">
+      Previous
+    </span>
+
+    <div>
+      {formatAuditValue(log.details?.old_value)}
+    </div>
+  </div>
+</td>
+                <td style={{ minWidth: "180px" }}>
+  <div className="p-2 rounded bg-light border">
+    <span className="badge bg-success mb-2">
+      Updated
+    </span>
+
+    <div>
+      {formatAuditValue(log.details?.new_value)}
+    </div>
+  </div>
+</td>
+
+                <td style={{ minWidth: "180px" }}>
+                  {log.created_at
+                    ? new Date(log.created_at).toLocaleString("en-IN")
+                    : "N/A"}
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    )}
+
+  </div>
+</div>
+
 
         </div>
       </div>
