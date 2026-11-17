@@ -1,0 +1,65 @@
+MEGA INDUSTRIAL SOLUTIONS PRIVATE LIMITED
+Registered Office: 22, Industrial Estate, Howrah, West Bengal - 711101
+GSTIN: 19AABCM7821K1ZP
+PAN: AABCM7821K
+Invoice No: MIS/2026-27/INV-00891
+Bill Ref: 00891-KOL
+Date of Invoice: 14-Nov-2026
+Date of Supply: 13/11/26
+Payment Due Date: 14-Dec-2026
+PO Number: PO/XYZ/2026/4498
+Delivery Challan: DC-7789/26
+Place of Supply: West Bengal (19)
+
+BILL TO:
+EASTERN INFRASTRUCTURE & ENGINEERING LTD.
+Block B, Sector V, Salt Lake, Kolkata - 700091
+GSTIN: 19AAACE1234F1Z6
+
+SHIP TO:
+Eastern Infrastructure Project Division
+New Town Industrial Area, Kolkata - 700156
+
+ITEMS:
+1 CNC Industrial Cutting Machine | 2 | 875000 | 1750000
+2 Hydraulic Press Machine | 1 | 645000 | 645000
+3 Industrial Generator 100 KVA | 2 | 425000 | 850000
+4 Heavy Duty Air Compressor | 3 | 185000 | 555000
+5 Steel Conveyor Belt Assembly | 4 | 112500 | 450000
+6 Industrial Cooling Unit | 2 | 235000 | 470000
+7 Electric Control Panel | 5 | 78500 | 392500
+8 Hydraulic Pump Set | 4 | 64000 | 256000
+9 Industrial Welding Machine | 6 | 48500 | 291000
+10 Heavy Duty Gearbox | 3 | 92000 | 276000
+11 Stainless Steel Pipes | 250 | 1850 | 462500
+12 Industrial Bearings | 120 | 2250 | 270000
+13 Safety Equipment Kit | 50 | 4500 | 225000
+14 Electrical Cable Roll | 80 | 3250 | 260000
+15 Industrial LED Lighting | 100 | 1850 | 185000
+16 Power Distribution Unit | 5 | 87500 | 437500
+17 Motor Assembly 15 HP | 4 | 125000 | 500000
+18 Water Treatment Equipment | 1 | 375000 | 375000
+19 Industrial Fan 48 inch | 12 | 18500 | 222000
+20 Temperature Sensor | 25 | 6500 | 162500
+21 Pressure Gauge | 40 | 4250 | 170000
+22 Industrial Valve Assembly | 18 | 12500 | 225000
+23 Packaging & Handling Material | 1 LOT | 85000 | 85000
+24 Installation & Commissioning | 1 JOB | 250000 | 250000
+25 Spare Parts Package | 1 LOT | 145000 | 145000
+
+Gross Item Value: 9472000.00
+Special Project Discount: 472000.00
+Net Taxable Value: 9000000.00
+CGST @ 9%: 810000.00
+SGST @ 9%: 810000.00
+IGST @ 18%: 0.00
+Freight: 85000.00
+Insurance: 45000.00
+Installation: 250000.00
+Invoice Total: 10900000.00
+Advance received: 1500000.00
+Balance payable: 9400000.00
+Currency: INR
+Payment terms: 30 days
+Payment mode: NEFT / RTGS
+Warranty: 12 months from installation.

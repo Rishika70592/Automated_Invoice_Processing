@@ -1,9 +1,10 @@
 
+from decimal import Decimal, InvalidOperation
 import json
 import logging
 import os
 from typing import Any
-
+import time
 import httpx
 from pydantic import ValidationError
 
@@ -24,7 +25,12 @@ OLLAMA_MODEL = os.getenv(
     "llama3.2:3b",
 )
 
-OLLAMA_TIMEOUT_SECONDS = 180.0
+OLLAMA_TIMEOUT_SECONDS = httpx.Timeout(
+    connect=10.0,
+    read=600.0,
+    write=120.0,
+    pool=10.0,
+)
 
 
 class InvoiceExtractionError(Exception):
@@ -79,17 +85,86 @@ Rules:
 - Preserve the original line-item order.
 - Do not merge separate line items.
 
+IMPORTANT TAX RATE RULES:
+- tax_rate must always be a numeric decimal string.
+- Never include the percentage symbol (%).
+- If the invoice shows 9%, return "9".
+- If the invoice shows 18%, return "18".
+- If the invoice shows 5%, return "5".
+- If the invoice shows 0%, return "0".
+- If the tax rate is unavailable, return null.
+- Do not convert percentage values into fractional values.
+- Preserve the tax rate as printed on the invoice.
+
 Invoice text:
 <invoice>
 {invoice_text}
 </invoice>
 """.strip()
 
+def _normalize_tax_rate(value: Any) -> Decimal | None:
+    """
+    Normalize tax rates returned by Ollama.
+
+    Examples:
+        "9%"  -> Decimal("9")
+        "18%" -> Decimal("18")
+        "5"   -> Decimal("5")
+        9     -> Decimal("9")
+        None  -> None
+    """
+
+    if value is None or value == "":
+        return None
+
+    if isinstance(value, bool):
+        raise ValueError("Boolean is not a valid tax rate.")
+
+    if isinstance(value, str):
+        value = value.strip()
+
+        if value.endswith("%"):
+            value = value[:-1].strip()
+
+    try:
+        return Decimal(str(value))
+
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        raise ValueError(
+            f"Invalid tax rate returned by Ollama: {value}"
+        ) from exc
+
+
+def _normalize_invoice_data(
+    parsed_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Normalize AI-generated invoice fields before validation."""
+
+    if not isinstance(parsed_data, dict):
+        raise ValueError("Invoice response must be a JSON object.")
+
+    line_items = parsed_data.get("line_items", [])
+
+    if not isinstance(line_items, list):
+        raise ValueError("line_items must be a list.")
+
+    for item in line_items:
+        if not isinstance(item, dict):
+            raise ValueError("Each line item must be an object.")
+
+        if "tax_rate" in item:
+            item["tax_rate"] = _normalize_tax_rate(
+                item["tax_rate"]
+            )
+
+    return parsed_data
+
+
 
 def _parse_ollama_response(
     payload: dict[str, Any],
 ) -> InvoiceData:
-    """Parse and validate the JSON returned by Ollama."""
+    """Parse, normalize and validate JSON returned by Ollama."""
 
     generated_text = payload.get("response")
 
@@ -104,12 +179,18 @@ def _parse_ollama_response(
         )
 
     try:
+        # Step 1: Parse JSON
         parsed_data = json.loads(generated_text)
 
+        # Step 2: Normalize AI-generated values
+        parsed_data = _normalize_invoice_data(parsed_data)
+
+        # Step 3: Validate using Pydantic
         invoice_data = InvoiceData.model_validate(
             parsed_data
         )
 
+        # Step 4: Identify missing invoice-level fields
         scalar_fields = [
             "invoice_number",
             "supplier_name",
@@ -139,14 +220,24 @@ def _parse_ollama_response(
 
         return invoice_data
 
-    except (json.JSONDecodeError, ValidationError) as exc:
+    except json.JSONDecodeError as exc:
         logger.warning(
-            "Ollama returned invalid invoice JSON."
+            "Ollama returned invalid JSON."
+        )
+
+        raise InvoiceExtractionError(
+            "Ollama returned invalid JSON."
+        ) from exc
+
+    except (ValidationError, ValueError) as exc:
+        logger.exception(
+            "Ollama invoice response failed validation."
         )
 
         raise InvoiceExtractionError(
             "The model response could not be parsed or validated."
         ) from exc
+
 
 
 def extract_invoice_data(
@@ -189,8 +280,10 @@ def extract_invoice_data(
                     "stream": False,
                     "format": InvoiceData.model_json_schema(),
                     "options": {
-                        "temperature": 0,
-                    },
+    "temperature": 0,
+    "num_ctx": 8192,
+    "num_predict": 4096,
+}
                 },
             )
 
