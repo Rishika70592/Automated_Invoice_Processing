@@ -46,6 +46,7 @@ Detect duplicate files and flag potential duplicate invoices.
 Maintain a centralized ingestion registry for tracking document sources and processing status.
 Record processing failures and retry eligible operations.
 Minimize manual work while maintaining appropriate human oversight.
+
 4. Technology Stack
 Technology	Purpose
 Python	Core application development
@@ -58,21 +59,33 @@ Ollama	Local LLM execution
 Llama 3.2 3B	AI-based invoice information extraction
 SQLite / PostgreSQL	Relational database storage
 SHA-256	Document integrity verification
+
 5. How the System Works
 
 The system follows an automated invoice-processing pipeline.
 
 Document Ingestion: Collects invoice documents through manual uploads, configured email accounts, cloud storage, or bulk archive imports.
+
 File Validation: Checks file extension, MIME type, file size, and file signature.
+
 Document Storage: Generates a UUID, calculates the SHA-256 hash, and stores the original document.
+
 Text Extraction: Uses PyMuPDF for digital PDFs and Tesseract OCR for scanned pages and images.
+
 AI-Based Extraction: Sends extracted text to Ollama using the Llama 3.2 3B model to generate structured invoice information.
+
 Data Normalization: Normalizes extracted values and validates the generated JSON using Pydantic.
+
 Business Validation: Checks mandatory fields, dates, currency, monetary calculations, and line items.
+
 Duplicate Detection: Identifies duplicate files and potential duplicate invoices.
+
 Database Persistence: Stores supplier information, invoices, line items, and validation results using SQLAlchemy.
+
 Processing Tracking: Updates processing job status and records audit events.
+
 Dashboard and Export: Provides invoice monitoring, manual review, correction, and JSON/CSV export capabilities.
+
 6. System Architecture
 
 The application follows a modular, service-oriented architecture with separation between the API, service, database, storage, and external processing components.
