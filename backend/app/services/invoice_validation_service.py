@@ -234,7 +234,17 @@ def validate_invoice(
     # 9. Final processing status
     # -------------------------------------------------
 
-    if errors or warnings:
+    
+    # -------------------------------------------------
+    # 9. Final processing status
+    # -------------------------------------------------
+
+    # Warnings are recorded but do not automatically
+    # prevent an invoice from being marked completed.
+    #
+    # Actual validation errors require manual review.
+
+    if errors:
         status = "needs_review"
     else:
         status = "completed"
@@ -246,3 +256,4 @@ def validate_invoice(
         "warnings": warnings,
         "info": info,
     }
+
