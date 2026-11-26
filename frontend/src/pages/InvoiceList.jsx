@@ -7,6 +7,7 @@ import {
   FileText,
   Search,
   X,
+  Files,
   Filter,
 } from "lucide-react";
 import api from "../api/axios";
@@ -218,32 +219,48 @@ function InvoiceList() {
           </p>
         </div>
 
-        <div className="d-flex gap-2">
+       
+<div className="d-flex gap-2 flex-wrap">
 
-          <button
-            className="btn btn-primary"
-            onClick={() => navigate("/invoices/upload")}
-          >
-            <FileText size={16} className="me-2" />
-            Upload Invoice
-          </button>
+  {/* Single Invoice Upload */}
 
-          <button
-            className="btn btn-outline-primary"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw
-              size={16}
-              className={`me-2 ${
-                refreshing ? "spin-animation" : ""
-              }`}
-            />
+  <button
+    className="btn btn-primary"
+    onClick={() => navigate("/invoices/upload")}
+  >
+    <FileText size={16} className="me-2" />
+    Upload Invoice
+  </button>
 
-            Refresh
-          </button>
+  {/* Bulk Invoice Upload */}
 
-        </div>
+  <button
+    className="btn btn-primary"
+    onClick={() => navigate("/bulk-invoice-upload")}
+  >
+    <Files size={16} className="me-2" />
+    Bulk Upload
+  </button>
+
+  {/* Refresh */}
+
+  <button
+    className="btn btn-outline-primary"
+    onClick={handleRefresh}
+    disabled={refreshing}
+  >
+    <RefreshCw
+      size={16}
+      className={`me-2 ${
+        refreshing ? "spin-animation" : ""
+      }`}
+    />
+
+    Refresh
+  </button>
+
+</div>
+
 
       </div>
 

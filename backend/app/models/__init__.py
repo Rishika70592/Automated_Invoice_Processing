@@ -7,6 +7,9 @@ from app.models.processing_job import ProcessingJob
 from app.models.validation_result import ValidationResult
 from app.models.audit_log import AuditLog
 from app.models.document_source import DocumentSource
+from app.models.import_batch import ImportBatch
+from app.models.import_batch_file import ImportBatchFile
+
 __all__ = [
     "User",
     "Document",
@@ -17,4 +20,6 @@ __all__ = [
     "ValidationResult",
     "AuditLog",
     "DocumentSource"
+    "ImportBatch",
+    "ImportBatchFile",
 ]

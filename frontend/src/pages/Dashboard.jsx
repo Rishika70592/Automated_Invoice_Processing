@@ -8,7 +8,7 @@ import {
   CheckCircle,
   AlertCircle,
   RefreshCw,
-  
+  Files,
   Upload,
   Eye,
   ClipboardCheck,
@@ -437,8 +437,40 @@ const fetchDashboard = async (isInitial = false) => {
       </div>
     </div>
 
+{/* Bulk Upload Invoices */}
+
+<div className="col-md-4">
+  <div className="card border-0 shadow-sm h-100 dashboard-action-card">
+    <div className="card-body p-4">
+
+      <div className="dashboard-action-icon bg-info bg-opacity-10 text-info mb-3">
+        <Files size={23} />
+      </div>
+
+      <h6 className="fw-bold">
+        Bulk Upload Invoices
+      </h6>
+
+      <p className="text-muted small">
+        Upload multiple invoice documents together and track their processing.
+      </p>
+
+      <button
+        className="btn btn-light border w-100 text-info fw-semibold"
+        onClick={() => navigate("/bulk-invoice-upload")}
+      >
+        Bulk Upload
+        <ArrowRight size={16} className="ms-2" />
+      </button>
+
+    </div>
   </div>
 </div>
+
+  </div>
+</div>
+
+
 
           {/* Completion Percentage */}
 

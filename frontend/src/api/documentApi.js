@@ -32,3 +32,29 @@ export const processInvoice = async (documentId) => {
 
   return response.data;
 };
+
+
+// NEW: Bulk invoice upload
+export const uploadBulkInvoices = async (files) => {
+  const formData = new FormData();
+
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const response = await api.post(
+    "/bulk-import/upload",
+    formData
+  );
+
+  return response.data;
+};
+
+// NEW: Retrieve bulk import progress
+export const getBulkImportStatus = async (batchId) => {
+  const response = await api.get(
+    `/bulk-import/${batchId}`
+  );
+
+  return response.data;
+};

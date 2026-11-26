@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.documents import router as documents_router
 from app.api.invoices import router as invoices_router
 from app.api.gmail_routes import router as gmail_router
+from app.api.bulk_import import router as bulk_import_router
+
 app = FastAPI(
     title="Automated Invoice Processing System",
     description="API for invoice upload, extraction, validation, and management.",
@@ -24,6 +26,7 @@ app.include_router(documents_router)
 
 app.include_router(gmail_router, prefix="/api")
 app.include_router(invoices_router)
+app.include_router(bulk_import_router)
 
 @app.get("/")
 def root():
