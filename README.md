@@ -449,3 +449,131 @@ text
 The primary objective is to develop an intelligent, reliable, and scalable invoice-processing solution that automates invoice collection, document extraction, information recognition, business validation, duplicate detection, and financial record management.
 
 By combining OCR, local LLM inference, automated ingestion, and structured database management, the system provides a centralized platform for processing large volumes of invoices while maintaining data accuracy, traceability, and human oversight.
+
+
+                  ┌──────────────────────────┐
+                  │          USER            │
+                  └────────────┬─────────────┘
+                               │
+                               ▼
+                  ┌──────────────────────────┐
+                  │     REACT FRONTEND       │
+                  │                          │
+                  │  • Invoice Dashboard     │
+                  │  • Document Upload       │
+                  │  • Invoice Details       │
+                  │  • Review & Correction  │
+                  │  • Search & Export       │
+                  └────────────┬─────────────┘
+                               │
+                         REST API (HTTP)
+                               │
+                               ▼
+                  ┌──────────────────────────┐
+                  │      FASTAPI BACKEND     │
+                  │                          │
+                  │  • Document Management   │
+                  │  • Invoice Management    │
+                  │  • Processing Jobs       │
+                  │  • Supplier Management   │
+                  │  • Duplicate Detection   │
+                  └────────────┬─────────────┘
+                               │
+                               ▼
+                  ┌──────────────────────────┐
+                  │   DOCUMENT PROCESSING    │
+                  │                          │
+                  │  • PDF Text Extraction   │
+                  │  • OCR Processing        │
+                  │  • Text Normalization    │
+                  └────────────┬─────────────┘
+                               │
+                               ▼
+                  ┌──────────────────────────┐
+                  │   AI INVOICE EXTRACTION  │
+                  │                          │
+                  │  • Invoice Information   │
+                  │  • Supplier Details      │
+                  │  • Financial Information │
+                  │  • Invoice Line Items    │
+                  └────────────┬─────────────┘
+                               │
+                               ▼
+                  ┌──────────────────────────┐
+                  │   VALIDATION & MATCHING  │
+                  │                          │
+                  │  • Pydantic Validation   │
+                  │  • Financial Validation  │
+                  │  • Supplier Matching     │
+                  │  • Duplicate Detection   │
+                  └────────────┬─────────────┘
+                               │
+                               ▼
+                  ┌──────────────────────────┐
+                  │   INVOICE PERSISTENCE    │
+                  │                          │
+                  │  • Invoice Records       │
+                  │  • Line Items            │
+                  │  • Validation Results   │
+                  │  • Processing Status    │
+                  └────────────┬─────────────┘
+                               │
+                               ▼
+                  ┌──────────────────────────┐
+                  │       POSTGRESQL         │
+                  │                          │
+                  │  • Documents             │
+                  │  • Invoices              │
+                  │  • Suppliers             │
+                  │  • Processing Jobs       │
+                  │  • Audit Logs            │
+                  └──────────────────────────┘
+
+
+       ┌──────────────────────┐
+       │   LOCAL FILE STORAGE │
+       │                      │
+       │  Original PDF Files  │
+       │  Invoice Images      │
+       └──────────────────────┘
+                    ▲
+                    │
+             Document Upload
+
+
+       ┌──────────────────────┐
+       │   EMAIL INGESTION    │
+       │                      │
+       │  Gmail API           │
+       │  Microsoft Graph     │
+       └──────────┬───────────┘
+                  │
+                  ▼
+          Document Management
+
+       ┌──────────────────────┐
+       │    BULK IMPORT       │
+       └──────────┬───────────┘
+                  │
+                  ▼
+          Document Management
+
+
+
+## System Architecture
+
+The application follows a modular monolithic architecture consisting of
+a React frontend, FastAPI backend, invoice processing pipeline, and
+PostgreSQL database.
+
+The frontend communicates with the backend through REST APIs.
+Uploaded invoice documents are stored in the local file system and
+processed using PDF text extraction, OCR, and AI-based information
+extraction.
+
+The extracted invoice data is validated using Pydantic and custom
+business validation logic. Supplier matching and duplicate detection
+are performed before invoice information is persisted in PostgreSQL.
+
+The backend also supports email-based invoice ingestion, bulk document
+imports, processing job tracking, and error handling.
