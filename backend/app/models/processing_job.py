@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -23,7 +23,12 @@ class ProcessingJob(Base):
         nullable=False,
         index=True,
     )
-
+    retry_count = Column(
+    Integer,
+    nullable=False,
+    default=0,
+    server_default="0"
+)
     job_type: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
@@ -63,3 +68,4 @@ class ProcessingJob(Base):
         "Document",
         back_populates="processing_jobs",
     )
+    

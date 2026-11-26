@@ -6,7 +6,7 @@ from app.models.invoice_line_item import InvoiceLineItem
 from app.models.processing_job import ProcessingJob
 from app.models.validation_result import ValidationResult
 from app.models.audit_log import AuditLog
-
+from app.models.document_source import DocumentSource
 __all__ = [
     "User",
     "Document",
@@ -16,4 +16,5 @@ __all__ = [
     "ProcessingJob",
     "ValidationResult",
     "AuditLog",
+    "DocumentSource"
 ]

@@ -131,3 +131,8 @@ class Document(Base):
         "AuditLog",
         back_populates="document",
     )
+    sources = relationship(
+    "DocumentSource",
+    back_populates="document",
+    cascade="all, delete-orphan",
+    )
